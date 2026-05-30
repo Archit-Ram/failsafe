@@ -1,0 +1,1 @@
+"""FAILSAFE FastAPI application."""
