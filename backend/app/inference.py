@@ -5,6 +5,7 @@ reused across requests. We add the project root to `sys.path` so the
 `ml.src.*` helpers (interventions, explainer) can be reused without
 duplication.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,6 +21,41 @@ import pandas as pd
 from xgboost import XGBClassifier
 
 from .config import get_settings
+
+FEATURE_MAPPING = {
+
+    "school": "School",
+    "sex": "Student's Sex",
+    "age": "Student's Age",
+    "address": "Home Address Type",
+    "famsize": "Family Size",
+    "Pstatus": "Parent's Cohabitation Status",
+    "Medu": "Mother's Education Level",
+    "Fedu": "Father's Education Level",
+    "Mjob": "Mother's Job",
+    "Fjob": "Father's Job",
+    "reason": "Reason for Choosing School",
+    "guardian": "Student's Guardian",
+    "traveltime": "Travel Time to School",
+    "studytime": "Weekly Study Time",
+    "failures": "Past Class Failures",
+    "schoolsup": "Extra Educational Support",
+    "famsup": "Family Educational Support",
+    "paid": "Extra Paid Classes",
+    "activities": "Extracurricular Activities",
+    "nursery": "Attended Nursery School",
+    "higher": "Wants Higher Education",
+    "internet": "Internet Access at Home",
+    "romantic": "In a Romantic Relationship",
+    "famrel": "Family Relationship Quality",
+    "freetime": "Free Time After School",
+    "goout": "Going Out with Friends",
+    "Dalc": "Workday Alcohol Consumption",
+    "Walc": "Weekend Alcohol Consumption",
+    "health": "Current Health Status",
+    "absences": "Number of Absences"
+}
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ML_ROOT = REPO_ROOT / "ml"
@@ -37,11 +73,26 @@ _engine: "InferenceEngine | None" = None
 
 
 def _band(score: float) -> str:
-    if score >= 0.66:
+    if score >= 0.60:    # Changed from 0.66
         return "high"
-    if score >= 0.33:
+    if score >= 0.35:    # Changed from 0.33 to match your new threshold
         return "medium"
     return "low"
+
+
+def translate_feature(f_raw: str) -> str:
+    # 1. Check for an exact match first
+    if f_raw in FEATURE_MAPPING:
+        return FEATURE_MAPPING[f_raw]
+
+    # 2. Check if it's a one-hot encoded feature (e.g., "Mjob_health")
+    for key, readable_name in FEATURE_MAPPING.items():
+        if f_raw.startswith(key + "_"):
+            suffix = f_raw.replace(key + "_", "")
+            return f"{readable_name} ({suffix})"
+
+    # 3. Fallback if no match is found
+    return f_raw
 
 
 class InferenceEngine:
@@ -113,11 +164,12 @@ class InferenceEngine:
                 {
                     "student_ref": ref,
                     "risk_score": score,
-                    "at_risk": bool(score >= 0.5),
+                    "at_risk": bool(score >= 0.35),
                     "risk_band": _band(score),
                     "base_value": explanation.base_value,
                     "contributions": [
-                        {"feature": f, "value": v, "shap": s}
+                        {"feature": translate_feature(
+                            f), "value": v, "shap": s}
                         for f, v, s in explanation.contributions
                     ],
                     "interventions": interventions,
