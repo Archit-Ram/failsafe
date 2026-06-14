@@ -47,7 +47,8 @@ def train(
 ) -> dict:
     df = add_target(load_raw())
     df.to_csv(PROCESSED_CSV, sep=";", index=False)
-    logger.info("Dataset: %d rows | risk rate = %.2f%%", len(df), 100 * df[TARGET_COL].mean())
+    logger.info("Dataset: %d rows | risk rate = %.2f%%",
+                len(df), 100 * df[TARGET_COL].mean())
 
     X_raw = feature_frame(df)
     y = df[TARGET_COL].astype(int).to_numpy()
@@ -74,7 +75,7 @@ def train(
         reg_lambda=1.0,
         objective="binary:logistic",
         eval_metric="logloss",
-        scale_pos_weight=spw,
+        scale_pos_weight=2.0,
         random_state=RANDOM_STATE,
         tree_method="hist",
     )
@@ -97,7 +98,8 @@ def train(
     )
     logger.info(
         "Classification report:\n%s",
-        classification_report(y_test, y_pred, target_names=["pass", "at_risk"]),
+        classification_report(y_test, y_pred, target_names=[
+                              "pass", "at_risk"]),
     )
 
     bg_idx = np.random.default_rng(RANDOM_STATE).choice(
